@@ -11,6 +11,8 @@
 #   make synth DESIGN=0042      # synthesis only
 #   make clean DESIGN=0042      # remove that design's build directory
 #   make list                   # how many designs are available
+#   make figures                # regenerate images/ from the two CSVs
+#   make figures-env            # (optional) venv with numpy + matplotlib
 #
 # All build products land in build/design_<DESIGN>/ and mirror the artifacts
 # shipped in the original dataset:
@@ -32,7 +34,9 @@ WORK       := $(ROOT)/build/design_$(DESIGN)
 SYNTH_EDF  := $(WORK)/viv_synth.edf
 BITSTREAM  := $(WORK)/design.bit
 
-.PHONY: all synth impl clean list check
+.PHONY: all synth impl clean list check figures figures-env \
+        figures-utilization figures-timing figures-congestion figures-runtime \
+        figures-ip-sizes
 
 all: impl
 synth: $(SYNTH_EDF)
@@ -64,3 +68,44 @@ clean:
 
 list:
 	@echo "$(words $(wildcard $(ROOT)/designs/design_*)) designs available (design_0000 .. design_9999)"
+
+# --- Figures -------------------------------------------------------------
+# Regenerate every figure in images/ purely from the two shipped CSVs; no
+# Vivado or build products are needed. Requires numpy + matplotlib, either on
+# $(PYTHON) or in a local venv created with `make figures-env`.
+FIG_DIR     := $(ROOT)/scripts/figures
+IMAGES_DIR  ?= $(ROOT)/images
+STATS_CSV   ?= $(ROOT)/dataset_stats.csv
+IP_CSV      ?= $(ROOT)/dataset_ip_sizes.csv
+FIG_FORMATS ?= png
+# IP types shown in the reduced per-IP size plot (ip_sizes_luts_ffs_subset).
+IP_TYPES    ?= microblaze,fft,axi_dma,emc,complex_multiplier,cordic,axi_cdma,quad_spi,axi_iic,floating_point
+# Prefer the local venv when it exists, otherwise fall back to $(PYTHON).
+FIG_PYTHON  ?= $(if $(wildcard $(ROOT)/.venv/bin/python),$(ROOT)/.venv/bin/python,$(PYTHON))
+FIG_ARGS     = --out-dir $(IMAGES_DIR) --formats $(FIG_FORMATS)
+
+figures: figures-utilization figures-timing figures-congestion figures-runtime figures-ip-sizes
+
+figures-utilization:
+	$(FIG_PYTHON) $(FIG_DIR)/utilization.py --csv $(STATS_CSV) $(FIG_ARGS)
+
+figures-timing:
+	$(FIG_PYTHON) $(FIG_DIR)/timing.py --csv $(STATS_CSV) $(FIG_ARGS)
+
+figures-congestion:
+	$(FIG_PYTHON) $(FIG_DIR)/congestion.py --csv $(STATS_CSV) $(FIG_ARGS)
+
+figures-runtime:
+	$(FIG_PYTHON) $(FIG_DIR)/runtime.py --csv $(STATS_CSV) $(FIG_ARGS)
+
+figures-ip-sizes:
+	$(FIG_PYTHON) $(FIG_DIR)/ip_sizes.py --csv $(IP_CSV) $(FIG_ARGS) --types $(IP_TYPES)
+
+figures-env: $(ROOT)/.venv/.installed
+
+# Stamp file rather than .venv/bin/python: that is a symlink to the system
+# interpreter, so its timestamp can't be used (or touched) to track installs.
+$(ROOT)/.venv/.installed: $(FIG_DIR)/requirements.txt
+	python3 -m venv $(ROOT)/.venv
+	$(ROOT)/.venv/bin/pip install -r $(FIG_DIR)/requirements.txt
+	touch $@

@@ -6,3 +6,10 @@ build/
 *.log
 .Xil/
 vivado_*.backup.*
+
+# Python venv for the figure scripts (`make figures-env`)
+.venv/
+
+# Python bytecode
+__pycache__/
+*.pyc

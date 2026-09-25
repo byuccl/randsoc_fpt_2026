@@ -36,10 +36,11 @@ README.md               this file
 Makefile                build any single design end-to-end
 dataset_stats.csv       per-design metrics for all 10,000 designs
 dataset_ip_sizes.csv    per-IP-instance resource sizes
-images/                 figures (regenerated from this dataset)
+images/                 figures (regenerated from the two CSVs; see below)
 scripts/
   impl.tcl              implementation Tcl driven by the Makefile
   vivado_ioparse.py     turns report_io.txt into pin constraints (design.xdc)
+  figures/              plotting scripts behind `make figures` (numpy + matplotlib)
 designs/
   design_0000/          design.tcl, impl_constraints.tcl, clock_constraint.xdc
   ...
@@ -85,6 +86,45 @@ Designs meeting the 120 MHz target timing (WNS >= 0):
 **3,187 / 10,000** (32%).
 
 ## Figures
+
+### Regenerating the figures
+
+Every figure in `images/` (other than the block-diagram screenshot) is produced
+from `dataset_stats.csv` and `dataset_ip_sizes.csv` by the scripts in
+`scripts/figures/`. No Vivado run or build products are needed. Regenerate them
+with:
+
+```sh
+make figures-env      # optional: create .venv with numpy + matplotlib
+make figures          # rewrite images/*.png from the two CSVs
+```
+
+`make figures` uses `.venv/bin/python` if `make figures-env` was run, otherwise
+`python3` (which must have `numpy` and `matplotlib` installed). Set
+`FIG_FORMATS=png,pdf` to also write PDFs, or `IMAGES_DIR=...` to write
+elsewhere. Individual groups can be run with `make figures-utilization`,
+`figures-timing`, `figures-congestion`, `figures-runtime`, or
+`figures-ip-sizes`; each script also prints the summary statistics quoted in
+the paper and the number of outliers clipped from each plot.
+
+The paper's data figures map to the following files and scripts:
+
+| Paper figure | File in `images/` | Script | Input CSV |
+|---|---|---|---|
+| Fig. 2 (per-IP size) | `ip_sizes_luts_ffs_subset.png` | `ip_sizes.py` | `dataset_ip_sizes.csv` |
+| Fig. 3a (size vs. runtime) | `runtime_size_vs_runtime_loglog.png` | `runtime.py` | `dataset_stats.csv` |
+| Fig. 3b (phase mix) | `runtime_phase_mix.png` | `runtime.py` | `dataset_stats.csv` |
+| Fig. 4a (Fmax) | `timing_fmax.png` | `timing.py` | `dataset_stats.csv` |
+| Fig. 4b (logic levels) | `timing_logic_levels.png` | `timing.py` | `dataset_stats.csv` |
+| Fig. 5a (slice utilization) | `utilization_slice_log.png` | `utilization.py` | `dataset_stats.csv` |
+| Fig. 5b (congestion) | `congestion_max.png` | `congestion.py` | `dataset_stats.csv` |
+
+`utilization.py` also writes the per-resource LUT/FF/BRAM/DSP/IO histograms
+shown at the end of this README. Fig. 1 (`system_block_diagram.png`) is a
+Vivado block-design screenshot of one generated design and is not produced by
+a script.
+
+### Notes on the figures below
 
 The figures below are regenerated directly from this released dataset, so they
 differ slightly from the corresponding figures in the paper. The paper's figures
