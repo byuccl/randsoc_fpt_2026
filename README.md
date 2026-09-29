@@ -13,7 +13,8 @@ Synthetic FPGA Benchmark Suites for ML Tooling Research."** It contains two part
   suite described in the paper, targeting the Xilinx Artix-7 `xc7a200tlffv1156-2L` with
   Vivado 2024.2. It ships the build inputs for every design plus a
   Makefile to rebuild any of them, per-design and per-IP statistics CSVs, the
-  paper's figures, and the scripts that regenerate those figures from the CSVs.
+  script that extracts those CSV rows from a rebuilt design's Vivado reports,
+  the paper's figures, and the scripts that regenerate those figures from the CSVs.
   See [`dataset/README.md`](dataset/README.md).
 
 The `dataset/` designs were generated with `randsoc/`, using the
@@ -30,11 +31,13 @@ make env                                            # create .venv, install deps
 make run CONFIG=configs/fpt_2026.yaml SEED=0        # writes ./temp/design.tcl
 ```
 
-Rebuild one of the suite's designs to a bitstream:
+Rebuild one of the suite's designs to a bitstream, then regenerate its rows of
+the statistics CSVs from the resulting reports:
 
 ```sh
 cd dataset
 make DESIGN=0042                                    # needs Vivado 2024.2
+make stats DESIGN=0042                              # reports -> CSV rows
 ```
 
 Regenerate the paper's figures from the shipped CSVs (no Vivado needed):

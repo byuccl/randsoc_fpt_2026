@@ -1,33 +1,50 @@
-"""This module provides support for parsing the report_io output of
-vivado into pin-port mappings"""
+"""Turn Vivado's report_io output into pin constraints (design.xdc).
 
+Reads a ``report_io`` table on stdin and writes one ``set_property`` line per
+placed port on stdout, fixing the port to the package pin that ``place_ports``
+chose during synthesis and giving every port ``IOSTANDARD LVCMOS33``.
+
+The I/O standard is deliberately hard-coded rather than copied from the report.
+This is the exact script the 10,000-design suite was built with, and the I/O
+standard determines the I/O buffer delays that placement and routing see; using
+the report's default (LVCMOS18) instead produces slightly different placement,
+routing, slack, and even LUT counts, so the shipped ``dataset_stats.csv`` and
+``dataset_ip_sizes.csv`` would not be reproduced. Keep this file as is when
+rebuilding designs from this suite.
+"""
+
+import re
 import sys
 
 
 def parse_pin(line):
-    # Match from report_io file: Pin Number, Signal Name, Use, IO Standard
-    res = line.split("|", maxsplit=7)
-    if len(res) < 3 or not res[2].strip() or res[2].strip() == "Signal Name" or len(res) < 8:
-        return None
-    return (res[1].strip(), res[2].strip(), res[5].strip(), res[6].strip().replace("*", ""))
+    match = re.match(
+        r"\|\s+([A-Z]+[0-9]+)\s+\|\s+([^\s\|]+)\s+\|[^\|]+\|[^\|]+\|\s+([A-Z]+)\s+\|",
+        line,
+    )
+    return (match.group(1), match.group(2), match.group(3)) if match else None
+
+
+def lines_of(stream):
+    yield from stream
 
 
 # Note that filter with None works like (x for x in gen if x)
-# yeild line in io_stream is default behavior in python for loop
 def map_pins(io_stream):
-    return filter(None, (parse_pin(line) for line in io_stream))
+    return filter(None, (parse_pin(line) for line in lines_of(io_stream)))
 
 
 def xdc_line(pin):
     return (
         "set_property -dict "
-        f"{{ PACKAGE_PIN {pin[0]}   IOSTANDARD {pin[3]} }} "
+        f"{{ PACKAGE_PIN {pin[0]}   IOSTANDARD LVCMOS33 }} "
         f"[get_ports {{ {pin[1]} }}];\n"
     )
 
 
 def write_xdc(pinmap, stream):
-    stream.writelines(xdc_line(pin) for pin in pinmap)
+    for pin in pinmap:
+        stream.write(xdc_line(pin))
 
 
 def main():

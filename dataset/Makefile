@@ -11,15 +11,23 @@
 #   make synth DESIGN=0042      # synthesis only
 #   make clean DESIGN=0042      # remove that design's build directory
 #   make list                   # how many designs are available
+#   make stats DESIGN=0042      # extract that design's rows from its reports into
+#                               #   build/dataset_stats.csv + build/dataset_ip_sizes.csv
+#                               #   (rows for a design already present are replaced)
+#   make stats-all              # rewrite those two CSVs from every built design
 #   make figures                # regenerate images/ from the two CSVs
 #   make figures-env            # (optional) venv with numpy + matplotlib
 #
-# All build products land in build/design_<DESIGN>/ and mirror the artifacts
-# shipped in the original dataset:
-#   synthesis:      viv_synth.edf, synth.dcp, synth.v, report_io.txt, design.xdc
-#   implementation: impl.dcp, viv_impl.v, viv_impl.edf, design.bit,
+# All build products land in build/design_<DESIGN>/, in the same two-directory
+# layout the original dataset was built with:
+#   vivado_synth/   viv_synth.edf, synth.dcp, synth.v, report_io.txt, design.xdc,
+#                   vivado.log, plus the per-IP *.edn sidecar netlists
+#   vivado_impl/    impl.dcp, viv_impl.v, viv_impl.edf, design.bit, vivado.log,
 #                   utilization.txt, utilization_hier.txt, timing_summary.txt,
 #                   congestion.txt, logic_levels.txt, power.txt
+# Synthesis and implementation must not share a directory: write_edif in each
+# step emits sidecar *.edn files for encrypted IP under the same names, so a
+# shared directory lets implementation overwrite synthesis's sidecars.
 
 VIVADO  ?= vivado
 PYTHON  ?= python3
@@ -30,11 +38,13 @@ PART    ?= xc7a200tlffv1156-2L
 ROOT       := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 DESIGN_DIR := $(ROOT)/designs/design_$(DESIGN)
 WORK       := $(ROOT)/build/design_$(DESIGN)
+SYNTH_DIR  := $(WORK)/vivado_synth
+IMPL_DIR   := $(WORK)/vivado_impl
 
-SYNTH_EDF  := $(WORK)/viv_synth.edf
-BITSTREAM  := $(WORK)/design.bit
+SYNTH_EDF  := $(SYNTH_DIR)/viv_synth.edf
+BITSTREAM  := $(IMPL_DIR)/design.bit
 
-.PHONY: all synth impl clean list check figures figures-env \
+.PHONY: all synth impl clean list check stats stats-all figures figures-env \
         figures-utilization figures-timing figures-congestion figures-runtime \
         figures-ip-sizes
 
@@ -48,19 +58,24 @@ check:
 
 # --- Synthesis -----------------------------------------------------------
 # design.tcl is self-contained: it builds the project + block design, runs
-# synth_1, and writes viv_synth.edf / synth.dcp / report_io.txt into $(WORK).
-# vivado_ioparse.py then turns report_io.txt into the pin constraints (design.xdc).
+# synth_1, and writes viv_synth.edf / synth.dcp / report_io.txt into the
+# current directory. vivado_ioparse.py then turns report_io.txt into the pin
+# constraints (design.xdc). `make stats` reads the synth_design runtime from
+# this step's vivado.log.
 $(SYNTH_EDF): $(DESIGN_DIR)/design.tcl | check
-	mkdir -p $(WORK)
-	cd $(WORK) && $(VIVADO) -mode batch -source $(DESIGN_DIR)/design.tcl
-	cd $(WORK) && $(PYTHON) $(ROOT)/scripts/vivado_ioparse.py \
+	mkdir -p $(SYNTH_DIR)
+	cd $(SYNTH_DIR) && $(VIVADO) -mode batch -source $(DESIGN_DIR)/design.tcl
+	cd $(SYNTH_DIR) && $(PYTHON) $(ROOT)/scripts/vivado_ioparse.py \
 		< report_io.txt > design.xdc
 
 # --- Implementation ------------------------------------------------------
 # Read the synthesized netlist + constraints, opt/place/route, write reports
-# and the bitstream. DESIGN_DIR and PART are passed to impl.tcl via the env.
+# and the bitstream. DESIGN_DIR, SYNTH_DIR and PART are passed to impl.tcl via
+# the env. `make stats` reads the opt/place/route runtimes and the placer's
+# routing-congestion estimates from this step's vivado.log.
 $(BITSTREAM): $(SYNTH_EDF)
-	cd $(WORK) && DESIGN_DIR=$(DESIGN_DIR) PART=$(PART) \
+	mkdir -p $(IMPL_DIR)
+	cd $(IMPL_DIR) && DESIGN_DIR=$(DESIGN_DIR) SYNTH_DIR=$(SYNTH_DIR) PART=$(PART) \
 		$(VIVADO) -mode batch -source $(ROOT)/scripts/impl.tcl
 
 clean:
@@ -68,6 +83,28 @@ clean:
 
 list:
 	@echo "$(words $(wildcard $(ROOT)/designs/design_*)) designs available (design_0000 .. design_9999)"
+
+# --- Statistics ----------------------------------------------------------
+# Turn a built design's Vivado reports + logs into the same rows that appear in
+# dataset_stats.csv and dataset_ip_sizes.csv, and add them to (or replace them
+# in) build/dataset_stats.csv and build/dataset_ip_sizes.csv, which have the
+# same layout as the shipped CSVs. This is the extraction step the shipped CSVs
+# were produced with; see scripts/collect_stats.py and the "Regenerating the
+# CSVs" section of README.md. Runs on plain python3 (standard library only).
+STATS_PY      := $(ROOT)/scripts/collect_stats.py
+OUT_STATS_CSV ?= $(ROOT)/build/dataset_stats.csv
+OUT_IP_CSV    ?= $(ROOT)/build/dataset_ip_sizes.csv
+
+stats: $(BITSTREAM)
+	$(PYTHON) $(STATS_PY) $(WORK) --design-dir $(DESIGN_DIR) --update \
+		--stats-csv $(OUT_STATS_CSV) --ip-sizes-csv $(OUT_IP_CSV)
+
+# Rewrite the two CSVs from scratch from every design that has been built
+# (build/design_*/vivado_impl/design.bit).
+stats-all:
+	$(PYTHON) $(STATS_PY) $(wildcard $(ROOT)/build/design_*) \
+		--designs-root $(ROOT)/designs \
+		--stats-csv $(OUT_STATS_CSV) --ip-sizes-csv $(OUT_IP_CSV)
 
 # --- Figures -------------------------------------------------------------
 # Regenerate every figure in images/ purely from the two shipped CSVs; no

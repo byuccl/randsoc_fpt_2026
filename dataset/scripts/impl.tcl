@@ -1,26 +1,33 @@
 # Implementation of a single RandSoC design.
 #
-# Run from the design's build/working directory (where synthesis already wrote
-# viv_synth.edf and design.xdc). The design's source directory -- which holds
-# impl_constraints.tcl and clock_constraint.xdc -- and the target part are passed
-# in through the DESIGN_DIR and PART environment variables (see the Makefile).
+# Run from the design's implementation directory (build/design_NNNN/vivado_impl).
+# Three environment variables are passed in by the Makefile:
+#   SYNTH_DIR   the synthesis directory holding viv_synth.edf (plus its per-IP
+#               *.edn sidecar netlists) and design.xdc
+#   DESIGN_DIR  the design's source directory, holding impl_constraints.tcl and
+#               clock_constraint.xdc
+#   PART        the target part
+# The synthesis and implementation directories are kept separate on purpose:
+# write_edif here emits *.edn sidecars for encrypted IP under the same names
+# synthesis used, and would overwrite synthesis's copies in a shared directory.
 #
 # This mirrors the original bfasst implementation flow (setup -> opt/place/route
 # -> reports -> bitstream) so a rebuilt design matches the shipped dataset.
 
 set design_dir $::env(DESIGN_DIR)
-set part $::env(PART)
+set synth_dir  $::env(SYNTH_DIR)
+set part       $::env(PART)
 
 if { [catch {
 
     # --- Setup: load the synthesized netlist as a gate-level design ----------
-    read_edif viv_synth.edf
-    set_property top_file [pwd]/viv_synth.edf [current_fileset]
+    read_edif $synth_dir/viv_synth.edf
+    set_property top_file $synth_dir/viv_synth.edf [current_fileset]
     link_design -part $part
     set_property design_mode GateLvl [current_fileset]
 
     # --- Constraints ---------------------------------------------------------
-    read_xdc design.xdc
+    read_xdc $synth_dir/design.xdc
     read_xdc $design_dir/impl_constraints.tcl
     read_xdc $design_dir/clock_constraint.xdc
 
