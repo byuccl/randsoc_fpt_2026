@@ -1,7 +1,9 @@
 """Resource-utilization figures from dataset_stats.csv.
 
 Writes one histogram per resource (LUT, FF, slice, BRAM, DSP, IO) with a
-log-scaled design-count axis: ``utilization_<res>_log.png``.
+log-scaled design-count axis: ``utilization_<res>_log.png``, plus a single
+overlaid histogram of slice/LUT/FF/DSP/BRAM utilization
+(``utilization_by_type.png``, the paper's Fig. 5a).
 """
 
 import argparse
@@ -72,6 +74,30 @@ def plot_histograms(data: list[dict], out_dir: Path) -> None:
             ax.set_xlim(0, 100)
 
 
+# Resources overlaid in the combined plot, in legend order. IO is left out: it
+# is a pin count, not fabric usage, and its distribution is shown on its own.
+BY_TYPE_RESOURCES = ["SLICE", "LUT", "FF", "DSP", "BRAM"]
+
+
+def plot_by_type(data: list[dict], out_dir: Path) -> None:
+    """All fabric resources on one log-scaled histogram.
+
+    Outlined (step) histograms rather than filled bars, so the series stay
+    visible where they overlap. Bins match the per-resource histograms.
+    """
+    bins = np.linspace(0, 100, 31)
+    with figure(out_dir / "utilization_by_type") as (_fig, ax):
+        for key in BY_TYPE_RESOURCES:
+            vals = [d[key] for d in data]
+            ax.hist(vals, bins=bins, histtype="step", linewidth=1.8,
+                    color=COLORS[key], label=key.capitalize() if key == "SLICE" else key)
+        ax.set_yscale("log")
+        ax.yaxis.set_major_formatter(ScalarFormatter())
+        ax.set_xlabel("Utilization (%)")
+        ax.set_ylabel("Number of designs")
+        ax.set_xlim(0, 100)
+        ax.legend(frameon=False)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
@@ -91,6 +117,7 @@ def main() -> None:
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     plot_histograms(data, args.out_dir)
+    plot_by_type(data, args.out_dir)
 
 
 if __name__ == "__main__":

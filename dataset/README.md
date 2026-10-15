@@ -30,6 +30,9 @@ keeping only those that implement successfully.
 To keep the suite small and reproducible, **only the clean build inputs are
 shipped** -- not the multi-gigabyte compiled outputs. You can rebuild any design's
 netlists, reports, and bitstream with the included `Makefile` (see below).
+The compiled outputs for all 10,000 designs (synthesis and implementation
+reports, logs, and post-synthesis and post-implementation checkpoints) total
+roughly 3 TB and are available from the authors on request.
 
 ```
 README.md               this file
@@ -171,11 +174,11 @@ The paper's data figures map to the following files and scripts:
 | Fig. 3b (phase mix) | `runtime_phase_mix.png` | `runtime.py` | `dataset_stats.csv` |
 | Fig. 4a (Fmax) | `timing_fmax.png` | `timing.py` | `dataset_stats.csv` |
 | Fig. 4b (logic levels) | `timing_logic_levels.png` | `timing.py` | `dataset_stats.csv` |
-| Fig. 5a (slice utilization) | `utilization_slice_log.png` | `utilization.py` | `dataset_stats.csv` |
+| Fig. 5a (utilization by resource type) | `utilization_by_type.png` | `utilization.py` | `dataset_stats.csv` |
 | Fig. 5b (congestion) | `congestion_max.png` | `congestion.py` | `dataset_stats.csv` |
 
-`utilization.py` also writes the per-resource LUT/FF/BRAM/DSP/IO histograms
-shown at the end of this README. Fig. 1 (`system_block_diagram.png`) is a
+`utilization.py` also writes the individual per-resource slice/LUT/FF/BRAM/DSP/IO
+histograms shown at the end of this README. Fig. 1 (`system_block_diagram.png`) is a
 Vivado block-design screenshot of one generated design and is not produced by
 a script.
 
