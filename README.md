@@ -1,7 +1,5 @@
 # RandSoC
 
-*Anonymized repository for blind review.*
-
 This repository accompanies the paper **"RandSoC: Generating Large, Diverse
 Synthetic FPGA Benchmark Suites for ML Tooling Research."** It contains two parts:
 
@@ -50,4 +48,15 @@ make figures                                        # rewrites dataset/images/*.
 
 ## License / attribution
 
-Author and affiliation details are withheld for blind review.
+This repository was created by Dallin Dahl, Reilly McKendrick, and Jeffrey
+Goeders, Department of Electrical and Computer Engineering, Brigham Young
+University. The RandSoC tool is developed at
+<https://github.com/byuccl/rand_soc>. If you use the tool or this suite, please
+cite:
+
+> D. Dahl, R. McKendrick, and J. Goeders, "RandSoC: Generating Large, Diverse
+> Synthetic FPGA Benchmark Suites for ML Tooling Research," in *Proc. Int. Conf.
+> on Field-Programmable Technology (FPT)*, 2026.
+
+Questions, and requests for the compiled outputs, go to Jeffrey Goeders
+(jgoeders@byu.edu).

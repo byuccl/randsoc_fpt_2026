@@ -1,7 +1,5 @@
 # RandSoC: A 10,000-Design Synthetic FPGA Benchmark Suite
 
-*Anonymized dataset for blind review.*
-
 This directory provides the 10,000-design benchmark suite described in the
 paper **"RandSoC: Generating Large, Diverse Synthetic FPGA Benchmark Suites for ML
 Tooling Research,"** together with everything needed to rebuild any design from
@@ -255,4 +253,15 @@ per-IP-instance breakdown is in `dataset_ip_sizes.csv`.
 
 ## License / attribution
 
-Author and affiliation details are withheld for blind review.
+This repository was created by Dallin Dahl, Reilly McKendrick, and Jeffrey
+Goeders, Department of Electrical and Computer Engineering, Brigham Young
+University. The RandSoC tool is developed at
+<https://github.com/byuccl/rand_soc>. If you use the tool or this suite, please
+cite:
+
+> D. Dahl, R. McKendrick, and J. Goeders, "RandSoC: Generating Large, Diverse
+> Synthetic FPGA Benchmark Suites for ML Tooling Research," in *Proc. Int. Conf.
+> on Field-Programmable Technology (FPT)*, 2026.
+
+Questions, and requests for the compiled outputs, go to Jeffrey Goeders
+(jgoeders@byu.edu).
